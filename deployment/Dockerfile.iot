@@ -1,0 +1,24 @@
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir paho-mqtt opencv-python-headless
+
+# Copy application files
+COPY iot_module/ /app/iot_module/
+COPY database/ /app/database/
+
+# Set environment variables
+ENV PYTHONPATH=/app
+
+# Run the IoT device client
+CMD ["python", "iot_module/main.py"]

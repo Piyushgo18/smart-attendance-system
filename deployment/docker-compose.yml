@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # Backend API service
+  backend:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.backend
+    ports:
+      - "5000:5000"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/smart_attendance
+      - SECRET_KEY=your_secret_key_here
+      - DEBUG=True
+    depends_on:
+      - mongodb
+    restart: unless-stopped
+    volumes:
+      - ../ai_module:/app/ai_module
+      - ./logs:/app/logs
+
+  # Frontend web server
+  frontend:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # MongoDB database
+  mongodb:
+    image: mongo:5.0
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    restart: unless-stopped
+
+  # MQTT broker for IoT devices
+  mqtt:
+    image: eclipse-mosquitto:2.0
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+    restart: unless-stopped
+
+  # IoT device simulator (for development)
+  device-simulator:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.iot
+    environment:
+      - DEVICE_ID=sim001
+      - BACKEND_URL=http://backend:5000
+      - MQTT_BROKER=mqtt
+      - MQTT_PORT=1883
+      - DEBUG=True
+    depends_on:
+      - backend
+      - mqtt
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
